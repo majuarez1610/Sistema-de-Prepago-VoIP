@@ -1,0 +1,217 @@
+:root {
+  --bg: #f4f8fb;
+  --ink: #12212e;
+  --panel: #ffffff;
+  --line: #d6e1ea;
+  --accent: #0d6b8a;
+  --accent-soft: #e5f3f8;
+  --ok: #2f7f5f;
+  --warn: #8a5a0d;
+  --error: #a12f2f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at top right, #dcecf3 0%, var(--bg) 50%);
+}
+
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.hero {
+  background: linear-gradient(120deg, #0d6b8a, #0f4c64);
+  color: #fff;
+  border-radius: 16px;
+  padding: 1.25rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.hero p {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.status-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.status-badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.status-ok {
+  background: #d7f2e6;
+  color: var(--ok);
+}
+
+.status-sub {
+  background: #f2f6f8;
+  color: #214253;
+}
+
+.status-error {
+  background: #f9d9d9;
+  color: var(--error);
+}
+
+.status-loading {
+  background: #ffeecf;
+  color: var(--warn);
+}
+
+.nav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.nav-tabs button {
+  border: 1px solid #9eb7c5;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+}
+
+.nav-tabs button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: #0e4a60;
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.metric-card,
+.guide-card,
+.table-card,
+.form-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.metric-card p {
+  margin: 0;
+  color: #4f6472;
+}
+
+.metric-card strong {
+  font-size: 2rem;
+}
+
+.guide-card {
+  grid-column: 1 / -1;
+}
+
+.guide-card ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.guide-card pre {
+  background: #f0f7fb;
+  border: 1px dashed #9cc2d4;
+  border-radius: 8px;
+  padding: 0.8rem;
+  overflow-x: auto;
+}
+
+.page-actions {
+  margin-bottom: 0.8rem;
+}
+
+.btn-refresh {
+  border: none;
+  background: #0d6b8a;
+  color: white;
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+}
+
+.forms-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.form-card {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.form-card input,
+.form-card select,
+.form-card button {
+  padding: 0.55rem;
+  border-radius: 8px;
+  border: 1px solid #b3c8d4;
+}
+
+.form-card button {
+  background: #0d6b8a;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.message-line {
+  margin: 0.5rem 0 1rem;
+  color: #0d4f64;
+}
+
+.table-card {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e2ebf1;
+  padding: 0.5rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+th {
+  background: #f3f8fb;
+}
+
+@media (max-width: 640px) {
+  .hero h1 {
+    font-size: 1.25rem;
+  }
+
+  th,
+  td {
+    font-size: 0.82rem;
+  }
+}
