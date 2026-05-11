@@ -1,42 +1,52 @@
 # Prueba principal con llamada real
 
-## Este es el flujo que vale para la exposicion
+Esta es la prueba valida para evaluacion profesional del proyecto, porque comprueba el flujo real de telefonia con Twilio y no solo una simulacion local.
+
+## 1) Flujo que debe observarse
 
 ```text
 Celular fisico
-   -> Twilio
-   -> ngrok
-   -> Node.js
-   -> Python
-   -> MySQL
-   -> TwiML
-   -> Audio en llamada real
+  -> Twilio Voice
+  -> ngrok
+  -> Node (webhook)
+  -> Python (decision)
+  -> MySQL (registro)
+  -> TwiML
+  -> Audio al usuario
 ```
 
-## Preparacion
+## 2) Precondiciones
 
-1. Python levantado en `8000`.
-2. Node levantado en `3000`.
-3. ngrok levantado hacia `3000`.
-4. Twilio configurado con webhook POST.
-5. Usuario real guardado en MySQL con E.164 exacto.
+1. Python activo en `http://localhost:8000/health`.
+2. Node activo en `http://localhost:3000/health`.
+3. ngrok exponiendo puerto `3000`.
+4. Twilio configurado con webhook `POST` actualizado.
+5. Usuario de prueba creado con telefono E.164 exacto.
+6. Dependencias instaladas en Python, Node y React.
 
-## Paso a paso
+## 3) Ejecucion de prueba
 
-1. Marca desde tu celular al numero Twilio.
-2. Twilio manda POST a:
+1. Desde celular real, llamar al numero Twilio.
+2. Confirmar que Twilio llama a:
 
 ```text
 https://TU_URL_NGROK/webhooks/twilio/incoming-call
 ```
 
-3. Node lee `From`, `To`, `CallSid`, `CallStatus`, `Direction`, `AccountSid`.
-4. Node consulta Python con `POST /decision/call`.
-5. Python consulta usuario y decide.
-6. Node guarda registro en `calls`.
-7. Twilio reproduce audio segun decision.
+3. Verificar en Node que se imprimen `From`, `To`, `CallSid` y `Decision`.
+4. Validar que Python responde una decision (`ALLOW_CALL` o `REJECT_CALL`).
+5. Confirmar audio final en la llamada.
 
-## Ejemplo visual de entrada Twilio (form-urlencoded)
+## 4) Evidencias que debes capturar
+
+- Captura del request en ngrok inspector (`:4040`).
+- Fragmento de log de Node con decision de la llamada.
+- Registro insertado en `calls` con `twilio_call_sid` y `account_sid`.
+- Registro en `decision_logs` con motivo de la regla aplicada.
+
+## 5) Entradas y salidas esperadas
+
+### Payload de entrada (Twilio)
 
 ```text
 From=+52XXXXXXXXXX
@@ -47,19 +57,19 @@ Direction=inbound
 AccountSid=ACxxxxxxxx
 ```
 
-## Ejemplo visual de salida TwiML
+### Respuesta de salida (TwiML)
 
-### Si ALLOW_CALL
+`ALLOW_CALL`:
 
 ```xml
 <Response>
   <Say language="es-MX">Llamada autorizada. Su saldo es suficiente.</Say>
   <Pause length="1"/>
-  <Say language="es-MX">Esta es una demostración del sistema de prepago VoIP basado en Redes Inteligentes.</Say>
+  <Say language="es-MX">Esta es una demostracion del sistema de prepago VoIP basado en Redes Inteligentes.</Say>
 </Response>
 ```
 
-### Si REJECT_CALL
+`REJECT_CALL`:
 
 ```xml
 <Response>
@@ -68,21 +78,18 @@ AccountSid=ACxxxxxxxx
 </Response>
 ```
 
-## Como saber si funciona
+## 6) Criterios de aceptacion
 
-- En ngrok inspector aparece request POST real.
-- En Node logs aparece `[TWILIO WEBHOOK] Incoming real call`.
-- En MySQL:
-  - `calls.twilio_call_sid` lleno.
-  - `calls.account_sid` lleno.
-  - `calls.decision` correcto.
-- En `decision_logs` aparece la regla aplicada.
-- El audio coincide con la decision.
+- El webhook real llega con HTTP `POST`.
+- Node responde HTTP `200` y `Content-Type: text/xml`.
+- El motivo de decision coincide con datos de `users`.
+- La evidencia en BD coincide con lo escuchado por el usuario.
 
-## Si falla, revisa esto
+## 7) Fallas tipicas durante la prueba
 
-- El numero de `users.phone_number` no coincide exactamente con `From`.
-- Usuario en `inactive`.
-- Saldo menor a `MIN_CALL_COST`.
-- ngrok sin conexion activa.
-- Webhook Twilio con URL vieja.
+| Falla | Causa probable | Correccion |
+|---|---|---|
+| No entra webhook | URL ngrok caducada | Actualizar URL en Twilio |
+| Llamada rechazada inesperada | Telefono no coincide en E.164 | Corregir `users.phone_number` |
+| Rechazo por saldo | `balance < MIN_CALL_COST` | Recargar saldo o bajar costo minimo |
+| Sin respuesta de voz | Error previo en Node/Python | Revisar logs y endpoints `/health` |

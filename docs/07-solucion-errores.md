@@ -1,45 +1,68 @@
 # Solucion de errores comunes
 
-## Mapa rapido de diagnostico
+Guia de diagnostico rapido para incidencias funcionales y tecnicas del sistema prepago VoIP.
+
+## 1) Arbol de diagnostico inicial
 
 ```text
-No suena audio en llamada real
-   |
-   +--> No hay request en ngrok? -> revisar Twilio URL / ngrok
-   |
-   +--> Hay request en ngrok pero error? -> revisar Node logs
-   |
-   +--> Node consulta y rechaza? -> revisar users/saldo/status en MySQL
-   |
-   +--> Error MySQL? -> revisar .env y credenciales
+No hay audio o la llamada falla
+  -> Llegan requests a ngrok?
+      -> No: revisar Twilio y tunnel
+      -> Si: revisar respuesta de Node
+           -> 4xx/5xx: revisar backend
+           -> 200 con rechazo: revisar reglas de negocio
 ```
 
-## Tabla de fallas y accion
+## 2) Catalogo de errores frecuentes
 
-| Sintoma | Posible causa | Que revisar |
-|---|---|---|
-| No llega nada a ngrok | URL mal en Twilio o ngrok apagado | `https://TU_URL_NGROK/...`, `ngrok http 3000` |
-| Llega a ngrok pero responde 500 | Node caido o error interno | logs Node, `GET /health` |
-| Node responde REJECT_CALL | Usuario/saldo/estado no valido | tabla `users` y `MIN_CALL_COST` |
-| Error DB_USER=postgres | Variables globales contaminan entorno | `.env` local + override habilitado |
-| Python no conecta a MySQL | Driver/credenciales | `pymysql`, `cryptography`, `.env` |
+| Sintoma | Indicador | Causa probable | Accion correctiva |
+|---|---|---|---|
+| No aparece request en ngrok | `:4040` sin trafico | URL de webhook incorrecta o ngrok apagado | Reiniciar ngrok y actualizar URL en Twilio |
+| Webhook responde 400 | Twilio muestra error de solicitud | Campo `From` ausente/invalido | Revisar payload form-urlencoded |
+| Webhook responde 500 | Stacktrace en Node | Error interno (DB, parsing, integracion) | Revisar logs y endpoint `/health` |
+| Timeout hacia Python | Node tarda y rechaza | SCF caido o `PYTHON_SERVICE_URL` mal | Levantar Python y corregir `.env` |
+| Error de conexion MySQL | `ER_ACCESS_DENIED_ERROR` o similar | Usuario/password/DB incorrectos | Verificar variables `DB_*` y esquema |
+| Rechazo de llamada | Decision `REJECT_CALL` | Usuario no registrado/inactivo/sin saldo | Validar `users` y `MIN_CALL_COST` |
+| Problema de auth MySQL en Python | Error `caching_sha2_password` | Dependencia criptografica faltante | Instalar `cryptography` en `venv` |
 
-## A) La llamada no llega a ngrok
+## 3) Diagnostico por capas
 
-1. Confirma que ngrok esta activo en puerto 3000.
-2. Confirma URL HTTPS actual de ngrok.
-3. En Twilio, verifica metodo `HTTP POST`.
-4. Revisa `http://127.0.0.1:4040`.
+### Capa de exposicion (Twilio + ngrok)
 
-## B) Llega a ngrok pero falla Node
+Checklist:
 
-1. Revisa consola de Node.
-2. Verifica `GET http://localhost:3000/health`.
-3. Verifica `backend-node/.env`.
+1. ngrok activo en puerto `3000`.
+2. URL HTTPS vigente y copiada completa.
+3. Twilio configurado con metodo `HTTP POST`.
+4. Ruta exacta `/webhooks/twilio/incoming-call`.
 
-## C) Llega a Node pero el numero no coincide
+### Capa de orquestacion (Node)
 
-Formato obligatorio E.164.
+Checklist:
+
+1. `GET http://localhost:3000/health` responde.
+2. Estado `mysql` y `python` sin error.
+3. Logs incluyen `[TWILIO WEBHOOK] Incoming real call`.
+
+### Capa de decision (Python)
+
+Checklist:
+
+1. `GET http://localhost:8000/health` responde `ok`.
+2. `POST /decision/call` no devuelve excepcion.
+3. `MIN_CALL_COST` esta bien definido.
+
+### Capa de datos (MySQL)
+
+Checklist:
+
+1. Base `intelligent_network_db` existe.
+2. Tablas `users`, `calls`, `decision_logs` existen.
+3. Credenciales en `.env` son correctas.
+
+## 4) Errores de formato de telefono
+
+Formato obligatorio de `From` y `users.phone_number`: E.164.
 
 Correcto:
 
@@ -51,41 +74,39 @@ Incorrecto:
 
 ```text
 52XXXXXXXXXX
-(52) XXXXX
-52-XXX-XXX
+(52) XXXXXXXX
+52-XXX-XXXX
 ```
 
-## D) Se registra REJECT_CALL
+## 5) Interpretacion de decisiones de negocio
 
-Que puede significar:
-- usuario no registrado,
-- usuario inactivo,
-- saldo insuficiente.
+| Decision | Motivo esperado |
+|---|---|
+| `ALLOW_CALL` | Usuario activo con saldo suficiente |
+| `REJECT_CALL` | Usuario no registrado |
+| `REJECT_CALL` | Usuario inactivo |
+| `REJECT_CALL` | Saldo insuficiente |
 
-Como comprobar:
-- tabla `users`,
-- tabla `decision_logs`,
-- `MIN_CALL_COST` en Python `.env`.
+Si la decision no coincide con lo esperado, revisar `decision_logs.reason`.
 
-## Variables globales conflictivas
-
-- Python usa `load_dotenv(override=True)` y carga `.env` local.
-- Node usa `dotenv` con `path` explicito y `override: true`.
-
-Esto evita heredar accidentalmente valores globales como `DB_USER=postgres`.
-
-## Error `caching_sha2_password`
-
-Instala dependencia en entorno Python:
+## 6) Comandos utiles de verificacion
 
 ```bash
-pip install cryptography
+curl http://localhost:3000/health
+curl http://localhost:8000/health
+curl "http://localhost:3000/webhooks/twilio/test?from=%2B52XXXXXXXXXX&to=%2B19012675646"
 ```
 
-## Seguridad del repositorio
+## 7) Prevencion y buenas practicas
 
-No subir nunca:
+- Instalar todas las dependencias antes de ejecutar (`npm install`, `pip install -r requirements.txt`).
+- Mantener `.env` por modulo y no depender de variables globales del sistema.
+- Validar salud de servicios antes de cada prueba real.
+- No versionar secretos ni archivos de entorno.
+
+No subir al repositorio:
+
 - `.env`
 - `venv/`
 - `node_modules/`
-- tokens, contrasenas o credenciales
+- tokens, passwords o credenciales

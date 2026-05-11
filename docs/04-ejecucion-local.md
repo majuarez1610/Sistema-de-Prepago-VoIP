@@ -1,90 +1,159 @@
-# Ejecucion local
+# Ejecucion local completa
 
-## Diagrama de terminales
+Este documento describe la puesta en marcha end-to-end del sistema para entorno de desarrollo y demostracion academica.
+
+## 1) Topologia de ejecucion
 
 ```text
-Terminal 1  -> Python SCF (puerto 8000)
-Terminal 2  -> Node.js SSF (puerto 3000)
-Terminal 3  -> ngrok (tunel publico a 3000)
-Terminal 4  -> React (panel web)
+Terminal 1 -> Python SCF (8000)
+Terminal 2 -> Node SSF (3000)
+Terminal 3 -> ngrok (tunnel -> 3000)
+Terminal 4 -> React panel (5173)
 ```
 
-## Paso 1) Preparar MySQL
+## 2) Paso previo obligatorio: instalar dependencias
 
-```bash
-mysql -u root -p < database/schema.sql
-mysql -u root -p < database/seed.example.sql
-```
+Antes de correr el sistema, instala dependencias en todos los modulos.
 
-Que esta pasando aqui:
-- Se crean tablas `users`, `recharges`, `calls`, `decision_logs`.
-- Se inserta un usuario minimo de ejemplo.
-
-Importante:
-- Edita `database/seed.example.sql` para usar tu numero real en formato E.164 (`+52XXXXXXXXXX`).
-
-## Paso 2) Levantar SCF en Python (Terminal 1)
+### Python
 
 ```bash
 cd intelligent-service-python
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Como saber si funciona:
-- Abre `http://localhost:8000/health` y debe responder `status: ok`.
-
-## Paso 3) Levantar SSF en Node (Terminal 2)
+### Node backend
 
 ```bash
 cd backend-node
 npm install
+```
+
+### React frontend
+
+```bash
+cd frontend-react
+npm install
+```
+
+## 3) Preparar base de datos MySQL
+
+1. Crear estructura:
+
+```bash
+mysql -u root -p < database/schema.sql
+```
+
+2. Cargar datos de ejemplo:
+
+```bash
+mysql -u root -p < database/seed.example.sql
+```
+
+3. Editar `database/seed.example.sql` con numero real en formato E.164 (`+52XXXXXXXXXX`).
+
+## 4) Configurar archivos `.env`
+
+### Backend Node
+
+```bash
+cd backend-node
 copy .env.example .env
+```
+
+Completar credenciales de MySQL y `PYTHON_SERVICE_URL`.
+
+### Servicio Python
+
+```bash
+cd intelligent-service-python
+copy .env.example .env
+```
+
+Completar credenciales de MySQL y `MIN_CALL_COST`.
+
+### Frontend React
+
+```bash
+cd frontend-react
+copy .env.example .env
+```
+
+Definir `VITE_API_URL` hacia Node (`http://localhost:3000`).
+
+## 5) Iniciar servicios
+
+### Terminal 1: Python SCF
+
+```bash
+cd intelligent-service-python
+venv\Scripts\activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Validar salud: `http://localhost:8000/health`.
+
+### Terminal 2: Node SSF
+
+```bash
+cd backend-node
 npm run dev
 ```
 
-Como saber si funciona:
-- Abre `http://localhost:3000/health`.
+Validar salud: `http://localhost:3000/health`.
 
-## Paso 4) Abrir tunel ngrok (Terminal 3)
+### Terminal 3: ngrok
 
 ```bash
 ngrok config add-authtoken TU_AUTHTOKEN
 ngrok http 3000
 ```
 
-Como saber si funciona:
-- Ver URL HTTPS publica en salida de ngrok.
-- Inspector disponible en `http://127.0.0.1:4040`.
+Guardar URL HTTPS publica.
 
-## Paso 5) Levantar panel React (Terminal 4)
+### Terminal 4: React
 
 ```bash
 cd frontend-react
-npm install
-copy .env.example .env
 npm run dev
 ```
 
-Como saber si funciona:
-- Abrir URL de Vite (normalmente `http://localhost:5173`).
+Abrir URL de Vite (normalmente `http://localhost:5173`).
 
-## Paso 6) Configurar Twilio
+## 6) Configurar webhook Twilio
 
-Webhook de entrada de llamada:
+En el numero de Twilio, `A call comes in`:
+
+- Tipo: `Webhook`.
+- Metodo: `HTTP POST`.
+- URL:
 
 ```text
 https://TU_URL_NGROK/webhooks/twilio/incoming-call
 ```
 
-Metodo: `HTTP POST`.
+## 7) Flujo esperado al ejecutar
 
-## Si falla, revisa esto
+1. Twilio entrega webhook a Node via ngrok.
+2. Node consulta Python para decision.
+3. Python consulta MySQL y responde.
+4. Node guarda llamada y responde TwiML.
+5. Twilio reproduce audio segun decision.
 
-- `GET /health` de Node no responde: Node no inicio o puerto ocupado.
-- Python no responde: entorno virtual no activo o dependencias faltantes.
-- MySQL rechaza acceso: ajustar `DB_USER` y `DB_PASSWORD` en `.env`.
-- No llega llamada: Twilio no tiene URL ngrok actualizada.
+## 8) Checklist de validacion minima
+
+- `GET /health` en Python responde `ok`.
+- `GET /health` en Node muestra `node: ok`, `mysql: ok`, `python: ok`.
+- ngrok inspector (`http://127.0.0.1:4040`) recibe POST real.
+- Existen inserciones nuevas en `calls` y `decision_logs`.
+
+## 9) Fallas frecuentes en ejecucion local
+
+| Sintoma | Diagnostico rapido | Accion |
+|---|---|---|
+| Python no levanta | Entorno virtual o dependencias faltantes | Reactivar `venv` e instalar `requirements.txt` |
+| Node no conecta DB | Variables `.env` incorrectas | Revisar `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` |
+| Node no conecta Python | URL SCF incorrecta | Corregir `PYTHON_SERVICE_URL` |
+| No llega trafico de Twilio | ngrok apagado o URL obsoleta | Reiniciar ngrok y actualizar webhook |

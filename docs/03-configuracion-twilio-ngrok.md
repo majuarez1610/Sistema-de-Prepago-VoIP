@@ -1,100 +1,108 @@
 # Configuracion de Twilio y ngrok
 
-Esta guia conecta tu backend local con llamadas reales de Twilio.
+Guia de integracion para exponer el backend local y recibir eventos reales de llamada desde Twilio.
 
-## Mapa visual rapido
+## 1) Objetivo tecnico
+
+Publicar el endpoint local `POST /webhooks/twilio/incoming-call` mediante una URL HTTPS valida para Twilio.
 
 ```text
-Celular fisico
-   |
-   v
-Twilio Number
-   |
-   v
-Webhook POST
-https://TU_URL_NGROK/webhooks/twilio/incoming-call
-   |
-   v
-ngrok -> localhost:3000 (Node.js)
+Twilio Voice
+   -> HTTPS Webhook
+   -> ngrok tunnel
+   -> localhost:3000 (Node)
 ```
 
-## Paso 1) Instalar ngrok
+## 2) Requisitos previos
 
-Descarga ngrok desde su sitio oficial, extrae el ejecutable y verifica:
+- `backend-node` debe estar ejecutandose en puerto `3000`.
+- ngrok instalado localmente.
+- Cuenta Twilio con numero de voz activo.
+
+## 3) Instalacion y registro de ngrok
+
+### Verificar instalacion
 
 ```bash
 ngrok version
 ```
 
-## Paso 2) Registrar authtoken
+### Registrar authtoken
 
 ```bash
 ngrok config add-authtoken TU_AUTHTOKEN
 ```
 
-Que esta pasando aqui:
-- ngrok enlaza tu cuenta para habilitar tuneles estables.
+Sin `authtoken`, la sesion puede tener restricciones y cortes inesperados.
 
-## Paso 3) Abrir tunel al backend Node
+## 4) Apertura del tunel publico
 
 ```bash
 ngrok http 3000
 ```
 
-Salida esperada (ejemplo visual):
+Salida esperada:
 
 ```text
-Forwarding  https://TU_URL_NGROK -> http://localhost:3000
+Forwarding https://TU_SUBDOMINIO.ngrok-free.app -> http://localhost:3000
 ```
 
-## Paso 4) Configurar webhook en Twilio
+Conserva la URL HTTPS exacta para configurar Twilio.
 
-Ruta en consola Twilio:
+## 5) Configuracion en consola Twilio
 
-1. `Active Numbers`
-2. Elegir numero Twilio
-3. `Voice Configuration`
-4. `A call comes in`
-5. Seleccionar `Webhook`
-6. Metodo `HTTP POST`
+Ruta sugerida:
 
-URL a configurar:
+1. `Phone Numbers`.
+2. Seleccionar numero de voz asignado.
+3. Seccion `Voice Configuration`.
+4. Campo `A call comes in`.
+5. Opcion `Webhook`.
+6. Metodo `HTTP POST`.
+
+URL requerida:
 
 ```text
 https://TU_URL_NGROK/webhooks/twilio/incoming-call
 ```
 
-## Paso 5) Validar inspector de ngrok
+## 6) Validacion operativa
 
-Abre en navegador:
+### Desde ngrok inspector
+
+Abrir:
 
 ```text
 http://127.0.0.1:4040
 ```
 
-Diagrama del inspector:
+Validar en cada request:
+
+- Metodo `POST`.
+- Ruta `/webhooks/twilio/incoming-call`.
+- Payload con `From`, `To`, `CallSid`, `AccountSid`.
+- Respuesta HTTP `200` con `Content-Type: text/xml`.
+
+### Desde backend Node
+
+Validar log:
 
 ```text
-http://127.0.0.1:4040
-  |
-  +-- Requests
-  |     +-- POST /webhooks/twilio/incoming-call
-  |
-  +-- Status code
-  +-- Request body (From, To, CallSid, AccountSid...)
-  +-- Response body (TwiML)
+[TWILIO WEBHOOK] Incoming real call
 ```
 
-## Como saber si funciona
+## 7) Errores comunes de esta etapa
 
-- Ves POST entrante en `:4040`.
-- Twilio marca webhook como exitoso.
-- Node responde `200` y `Content-Type: text/xml`.
+| Sintoma | Causa | Solucion |
+|---|---|---|
+| Twilio no entrega webhook | URL incorrecta o vencida | Copiar nueva URL de ngrok y actualizar Twilio |
+| Codigo 404/405 | Ruta o metodo incorrecto | Verificar `POST` y endpoint completo |
+| Codigo 502/503 | Node detenido o con fallo | Reiniciar backend y revisar logs |
+| No hay trafico en inspector | ngrok apagado o puerto incorrecto | Ejecutar `ngrok http 3000` |
+| Error en cuenta trial | Numero origen no verificado | Verificar numero en consola Twilio |
 
-## Si falla, revisa esto
+## 8) Recomendaciones para demo
 
-- ngrok esta apagado.
-- URL de ngrok cambio y Twilio tiene URL vieja.
-- Metodo no es POST.
-- Backend Node no esta escuchando en puerto 3000.
-- Cuenta trial sin numero verificado.
+- Reiniciar ngrok antes de la exposicion y actualizar webhook en Twilio.
+- Probar `GET http://localhost:3000/health` antes de llamar.
+- Tener abierto `http://127.0.0.1:4040` para mostrar evidencia en vivo.

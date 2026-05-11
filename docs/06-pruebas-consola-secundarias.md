@@ -1,19 +1,26 @@
 # Pruebas secundarias por consola
 
-Estas pruebas son utiles para depuracion rapida, pero no reemplazan la prueba principal con llamada real.
+Estas pruebas aceleran la depuracion tecnica, pero no sustituyen la validacion oficial con llamada real.
 
-## Por que son secundarias
+## 1) Alcance de estas pruebas
 
 ```text
-Consola -> Node local -> Python -> MySQL
+Consola local -> Node -> Python -> MySQL
 ```
 
-En este camino no validas:
-- que Twilio realmente dispare webhook,
-- que ngrok reciba trafico externo,
-- que el audio llegue al usuario real.
+Permiten validar:
 
-## Prueba secundaria 1: GET de simulacion
+- Logica de decision y persistencia.
+- Formato de respuesta TwiML.
+- Conectividad Node-Python-MySQL.
+
+No permiten validar:
+
+- Entrega real de webhook desde Twilio.
+- Exposicion publica por ngrok en condiciones reales.
+- Experiencia de audio en llamada telefonica.
+
+## 2) Prueba A: GET de simulacion
 
 Endpoint:
 
@@ -21,16 +28,21 @@ Endpoint:
 GET /webhooks/twilio/test?from=+52XXXXXXXXXX&to=+19012675646
 ```
 
-Ejemplo:
+Ejemplo con `curl`:
 
 ```bash
 curl "http://localhost:3000/webhooks/twilio/test?from=%2B52XXXXXXXXXX&to=%2B19012675646"
 ```
 
-Que esta pasando aqui:
-- Node construye un payload simulado parecido al de Twilio y procesa decision.
+Comportamiento esperado:
 
-## Prueba secundaria 2: POST manual estilo Twilio
+- Node construye payload simulado.
+- Se ejecuta la consulta al SCF.
+- Se devuelve TwiML segun decision.
+
+## 3) Prueba B: POST manual estilo Twilio
+
+### `curl`
 
 ```bash
 curl -X POST "http://localhost:3000/webhooks/twilio/incoming-call" \
@@ -38,27 +50,36 @@ curl -X POST "http://localhost:3000/webhooks/twilio/incoming-call" \
   -d "From=%2B52XXXXXXXXXX&To=%2B19012675646&CallSid=CA_TEST&CallStatus=ringing&Direction=inbound-api&AccountSid=AC_TEST"
 ```
 
-PowerShell:
+### PowerShell
 
 ```powershell
 Invoke-WebRequest -Method POST -Uri "http://localhost:3000/webhooks/twilio/incoming-call" -ContentType "application/x-www-form-urlencoded" -Body "From=%2B52XXXXXXXXXX&To=%2B19012675646&CallSid=CA_TEST&CallStatus=ringing&Direction=inbound-api&AccountSid=AC_TEST"
 ```
 
-## Resultado esperado
+## 4) Resultado esperado
 
-- HTTP `200`.
-- Header `Content-Type: text/xml`.
-- Body TwiML con mensaje de autorizacion o rechazo.
+- Codigo HTTP `200`.
+- Encabezado `Content-Type: text/xml`.
+- Cuerpo TwiML con mensaje de autorizacion o rechazo.
+- Insercion en tablas `calls` y `decision_logs`.
 
-## Como saber si funciona
+## 5) Criterios de aprobacion tecnica
 
-- Se inserta registro en `calls`.
-- Se inserta registro en `decision_logs`.
-- El `From` prueba coincidencia con usuario E.164.
+- El telefono de entrada `From` coincide con formato E.164.
+- La decision en respuesta coincide con el estado real en tabla `users`.
+- No existen errores de conexion en logs de Node/Python.
 
-## Si falla, revisa esto
+## 6) Errores frecuentes en pruebas secundarias
 
-- `From` sin formato E.164.
-- Usuario inexistente.
-- Python no esta levantado.
-- Credenciales MySQL invalidas en `.env`.
+| Error | Causa | Solucion |
+|---|---|---|
+| Respuesta 400 | Campo `From` faltante o invalido | Enviar `From` con E.164 valido |
+| Respuesta 500 | Error interno de Node o DB | Revisar stacktrace y `.env` |
+| Rechazo inesperado | Usuario no existe/inactivo/sin saldo | Verificar tabla `users` y `MIN_CALL_COST` |
+| Timeout hacia Python | SCF detenido o URL incorrecta | Levantar SCF y validar `PYTHON_SERVICE_URL` |
+
+## 7) Uso recomendado
+
+- Ejecutar estas pruebas antes de la llamada real.
+- Usarlas para aislar problemas de negocio o persistencia.
+- Pasar a prueba principal cuando el flujo local ya sea estable.
