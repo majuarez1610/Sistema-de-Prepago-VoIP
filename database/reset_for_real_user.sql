@@ -17,4 +17,4 @@ ALTER TABLE users AUTO_INCREMENT = 1;
 -- 4) Insertar usuario unico para pruebas reales
 -- EDITA ESTE NUMERO ANTES DE EJECUTAR: usa formato E.164, por ejemplo +52XXXXXXXXXX
 INSERT INTO users (id, name, phone_number, balance, status)
-VALUES (1, 'Usuario Real', '+52XXXXXXXXXX', 10.00, 'active');
+VALUES (1, 'Mario Juarez', '+525539106492', 10.00, 'active');
