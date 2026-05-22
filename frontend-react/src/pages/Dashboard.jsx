@@ -1,3 +1,4 @@
+﻿import React from 'react';
 export default function Dashboard({ usersCount, callsCount, decisionsCount }) {
   return (
     <div className="page-grid">
@@ -28,3 +29,4 @@ export default function Dashboard({ usersCount, callsCount, decisionsCount }) {
     </div>
   );
 }
+

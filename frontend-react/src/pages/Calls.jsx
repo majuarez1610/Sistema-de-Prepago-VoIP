@@ -1,3 +1,4 @@
+﻿import React from 'react';
 import CallsTable from '../components/CallsTable';
 import RefreshButton from '../components/RefreshButton';
 
@@ -11,3 +12,4 @@ export default function Calls({ calls, loading, onRefresh }) {
     </div>
   );
 }
+

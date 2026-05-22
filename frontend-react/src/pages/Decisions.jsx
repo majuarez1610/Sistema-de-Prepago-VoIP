@@ -1,3 +1,4 @@
+﻿import React from 'react';
 import DecisionsTable from '../components/DecisionsTable';
 import RefreshButton from '../components/RefreshButton';
 
@@ -11,3 +12,4 @@ export default function Decisions({ decisions, loading, onRefresh }) {
     </div>
   );
 }
+

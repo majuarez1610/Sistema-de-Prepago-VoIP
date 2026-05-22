@@ -1,3 +1,4 @@
+﻿import React from 'react';
 export default function RealCallGuide() {
   return (
     <div className="guide-card">
@@ -13,3 +14,4 @@ export default function RealCallGuide() {
     </div>
   );
 }
+

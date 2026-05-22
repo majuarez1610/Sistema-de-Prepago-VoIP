@@ -1,3 +1,4 @@
+﻿import React from 'react';
 export default function BackendStatus({ status, loading, error }) {
   if (loading) {
     return <div className="status-badge status-loading">Verificando backend...</div>;
@@ -18,3 +19,4 @@ export default function BackendStatus({ status, loading, error }) {
     </div>
   );
 }
+

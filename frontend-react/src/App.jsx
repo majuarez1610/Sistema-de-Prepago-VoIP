@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from './services/api';
 import BackendStatus from './components/BackendStatus';
 import Dashboard from './pages/Dashboard';

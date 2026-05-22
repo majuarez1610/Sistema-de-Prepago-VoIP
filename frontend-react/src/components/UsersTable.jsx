@@ -1,3 +1,4 @@
+﻿import React from 'react';
 function money(value) {
   return Number(value).toFixed(2);
 }
@@ -37,3 +38,4 @@ export default function UsersTable({ users }) {
     </div>
   );
 }
+

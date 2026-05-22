@@ -1,3 +1,4 @@
+﻿import React from 'react';
 export default function CallsTable({ calls }) {
   return (
     <div className="table-card">
@@ -37,3 +38,4 @@ export default function CallsTable({ calls }) {
     </div>
   );
 }
+
