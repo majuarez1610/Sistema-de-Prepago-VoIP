@@ -23,7 +23,7 @@ def _quantize_money(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def evaluate_call(db: Session, phone_number: str, destination_number: str | None = None):
+def evaluate_call(db: Session, phone_number: str, destination_number: str | None = None, saturated_schedule: bool = False) -> dict:
     try:
         user = (
             db.query(User)
@@ -71,13 +71,21 @@ def evaluate_call(db: Session, phone_number: str, destination_number: str | None
                 "current_balance": float(balance_before),
                 "cost": 0.00,
             }
+        
+        if saturated_schedule:
+            FINAL_COST = Decimal("2.00")
+            razon_tarifa = "Tarifa Especial Hora Pico ($2.00)"
 
-        if balance_before < MIN_CALL_COST:
+        else:
+            FINAL_COST = MIN_CALL_COST
+            razon_tarifa = f"Tarifa Regular Estándar (${MIN_CALL_COST})"   
+
+        if balance_before < FINAL_COST:
             log = DecisionLog(
                 user_id=user.id,
                 phone_number=phone_number,
                 decision="REJECT_CALL",
-                reason="Saldo insuficiente",
+                reason=f"Saldo insuficiente para {razon_tarifa}",
                 balance_before=balance_before,
                 cost=Decimal("0.00"),
             )
@@ -85,22 +93,22 @@ def evaluate_call(db: Session, phone_number: str, destination_number: str | None
             db.commit()
             return {
                 "decision": "REJECT_CALL",
-                "reason": "Saldo insuficiente",
+                "reason": f"Saldo insuficiente requiere {razon_tarifa}",
                 "user_id": user.id,
                 "current_balance": float(balance_before),
                 "cost": 0.00,
             }
 
-        new_balance = _quantize_money(balance_before - MIN_CALL_COST)
+        new_balance = _quantize_money(balance_before - FINAL_COST)
         user.balance = new_balance
 
         log = DecisionLog(
             user_id=user.id,
             phone_number=phone_number,
             decision="ALLOW_CALL",
-            reason="Usuario activo con saldo suficiente",
+            reason=f"Llamada autorizada con {razon_tarifa}",
             balance_before=balance_before,
-            cost=MIN_CALL_COST,
+            cost=FINAL_COST,
         )
         db.add(log)
         db.commit()
@@ -108,10 +116,10 @@ def evaluate_call(db: Session, phone_number: str, destination_number: str | None
 
         return {
             "decision": "ALLOW_CALL",
-            "reason": "Usuario activo con saldo suficiente",
+            "reason": f"Usuario activo. Procesado con {razon_tarifa}",
             "user_id": user.id,
             "current_balance": float(_quantize_money(Decimal(user.balance))),
-            "cost": float(MIN_CALL_COST),
+            "cost": float(FINAL_COST),
         }
     except Exception:
         db.rollback()

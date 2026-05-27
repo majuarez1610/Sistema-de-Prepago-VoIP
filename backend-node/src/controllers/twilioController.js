@@ -72,7 +72,7 @@ async function saveCallRecord({
   await pool.execute(query, values);
 }
 
-async function processIncomingCallPayload(payload, res) {
+async function processIncomingCallPayload(payload, req, res) {
   const fromNumber = payload.From || payload.from;
   const toNumber = payload.To || payload.to || null;
   const callSid = payload.CallSid || payload.callSid || null;
@@ -93,8 +93,13 @@ async function processIncomingCallPayload(payload, res) {
   }
 
   let decisionData;
+  const saturatedSchedule = req && req.query ? req.query.schedule === 'true' : false;
+
+    console.log(`📡 [Twilio Controller] ¿Es horario saturado?: ${saturatedSchedule}`);
+
+
   try {
-    decisionData = await requestCallDecision(fromNumber, toNumber);
+    decisionData = await requestCallDecision(fromNumber, toNumber, saturatedSchedule);
   } catch (error) {
     const reason = 'Fallo al consultar el servicio inteligente';
     try {
@@ -154,7 +159,7 @@ async function processIncomingCallPayload(payload, res) {
 
 async function incomingCall(req, res, next) {
   try {
-    await processIncomingCallPayload(req.body, res);
+    await processIncomingCallPayload(req.body, req, res);
   } catch (error) {
     next(error);
   }
@@ -171,7 +176,7 @@ async function testIncomingCall(req, res, next) {
       AccountSid: 'TEST_ACCOUNT_SID'
     };
 
-    await processIncomingCallPayload(simulatedPayload, res);
+    await processIncomingCallPayload(simulatedPayload, req, res);
   } catch (error) {
     next(error);
   }

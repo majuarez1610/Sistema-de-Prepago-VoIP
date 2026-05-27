@@ -23,6 +23,7 @@ def decide_call(payload: CallDecisionRequest, db: Session = Depends(get_db)):
             db=db,
             phone_number=payload.phone_number,
             destination_number=payload.destination_number,
+            saturated_schedule=payload.saturated_schedule
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Error en decision inteligente: {str(exc)}")

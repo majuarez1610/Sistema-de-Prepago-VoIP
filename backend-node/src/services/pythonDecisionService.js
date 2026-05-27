@@ -1,12 +1,13 @@
 const axios = require('axios');
 
-async function requestCallDecision(phoneNumber, destinationNumber) {
+async function requestCallDecision(phoneNumber, destinationNumber, saturatedSchedule= false) {
   const baseUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
   const response = await axios.post(
     `${baseUrl}/decision/call`,
     {
       phone_number: phoneNumber,
-      destination_number: destinationNumber || null
+      destination_number: destinationNumber || null,
+      saturated_schedule: saturatedSchedule
     },
     {
       timeout: 10000
