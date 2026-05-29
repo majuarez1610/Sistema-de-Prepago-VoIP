@@ -12,3 +12,5 @@ class CallDecisionResponse(BaseModel):
     user_id: int | None
     current_balance: float
     cost: float
+    balance_alert: str
+    alert_message: str
