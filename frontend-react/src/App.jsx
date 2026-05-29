@@ -8,12 +8,20 @@ import Decisions from './pages/Decisions';
 import RealCallGuide from './pages/RealCallGuide';
 
 const VIEWS = {
-  DASHBOARD: 'Dashboard',
-  USERS: 'Users',
-  CALLS: 'Calls',
-  DECISIONS: 'Decisions',
-  GUIDE: 'Prueba de llamada real'
+  DASHBOARD: 'dashboard',
+  USERS: 'users',
+  CALLS: 'calls',
+  DECISIONS: 'decisions',
+  GUIDE: 'guide'
 };
+
+const NAV_ITEMS = [
+  { key: VIEWS.DASHBOARD, label: 'Dashboard', icon: '📊' },
+  { key: VIEWS.USERS, label: 'Usuarios', icon: '👤' },
+  { key: VIEWS.CALLS, label: 'Llamadas', icon: '📞' },
+  { key: VIEWS.DECISIONS, label: 'Decisiones', icon: '🧠' },
+  { key: VIEWS.GUIDE, label: 'Prueba real', icon: '🛰️' }
+];
 
 export default function App() {
   const [activeView, setActiveView] = useState(VIEWS.DASHBOARD);
@@ -65,52 +73,107 @@ export default function App() {
     await loadAll();
   };
 
+  const syncTwilioCalls = async () => {
+    await api.syncTwilioCalls({ pageSize: 50 });
+    await loadAll();
+  };
+
   useEffect(() => {
     loadHealth();
     loadAll();
   }, []);
 
+  const currentViewLabel =
+    NAV_ITEMS.find((item) => item.key === activeView)?.label || 'Dashboard';
+
   return (
     <div className="app-shell">
-      <header className="hero">
-        <h1>Sistema de Prepago VoIP con Red Inteligente</h1>
-        <p>Flujo principal: celular fisico a Twilio, despues ngrok, Node.js, Python, MySQL y respuesta TwiML.</p>
-        <BackendStatus status={health} loading={loadingHealth} error={healthError} />
-      </header>
+      <div className="layout-shell">
+        <aside className="sidebar">
+          <div className="brand-card">
+            <div className="brand-badge">IN</div>
+            <div>
+              <h1>VoIP Intelligent Network</h1>
+              <p>Sistema de prepago y control inteligente de llamadas</p>
+            </div>
+          </div>
 
-      <nav className="nav-tabs">
-        {Object.values(VIEWS).map((view) => (
-          <button
-            key={view}
-            className={activeView === view ? 'active' : ''}
-            onClick={() => setActiveView(view)}
-          >
-            {view}
-          </button>
-        ))}
-      </nav>
+          <nav className="side-nav">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.key}
+                className={`nav-item ${activeView === item.key ? 'active' : ''}`}
+                onClick={() => setActiveView(item.key)}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
 
-      <main>
-        {activeView === VIEWS.DASHBOARD && (
-          <Dashboard usersCount={users.length} callsCount={calls.length} decisionsCount={decisions.length} />
-        )}
-        {activeView === VIEWS.USERS && (
-          <Users
-            users={users}
-            loading={loadingData}
-            onRefresh={loadAll}
-            onCreateUser={createUser}
-            onRechargeUser={rechargeUser}
-          />
-        )}
-        {activeView === VIEWS.CALLS && (
-          <Calls calls={calls} loading={loadingData} onRefresh={loadAll} />
-        )}
-        {activeView === VIEWS.DECISIONS && (
-          <Decisions decisions={decisions} loading={loadingData} onRefresh={loadAll} />
-        )}
-        {activeView === VIEWS.GUIDE && <RealCallGuide />}
-      </main>
+          <div className="side-note">
+            <h3>Resumen del proyecto</h3>
+            <p>
+              Simulación de Red Inteligente con Twilio, Node.js, Python y MySQL
+              para autorización, rechazo y monitoreo de llamadas.
+            </p>
+          </div>
+        </aside>
+
+        <div className="content-shell">
+          <header className="topbar">
+            <div>
+              <p className="eyebrow">Panel principal</p>
+              <h2>{currentViewLabel}</h2>
+              <p className="topbar-subtitle">
+                Interfaz de monitoreo para eventos de señalización, usuarios y
+                decisiones del SCF.
+              </p>
+            </div>
+
+            <BackendStatus
+              status={health}
+              loading={loadingHealth}
+              error={healthError}
+            />
+          </header>
+
+          <main className="content-panel">
+            {activeView === VIEWS.DASHBOARD && (
+              <Dashboard users={users} calls={calls} decisions={decisions} />
+            )}
+
+            {activeView === VIEWS.USERS && (
+              <Users
+                users={users}
+                loading={loadingData}
+                onRefresh={loadAll}
+                onCreateUser={createUser}
+                onRechargeUser={rechargeUser}
+              />
+            )}
+
+            {activeView === VIEWS.CALLS && (
+              <Calls
+                calls={calls}
+                loading={loadingData}
+                onRefresh={loadAll}
+                onSyncTwilio={syncTwilioCalls}
+              />
+            )}
+
+            {activeView === VIEWS.DECISIONS && (
+              <Decisions
+                decisions={decisions}
+                loading={loadingData}
+                onRefresh={loadAll}
+              />
+            )}
+
+            {activeView === VIEWS.GUIDE && <RealCallGuide />}
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { syncTwilioCalls: syncTwilioCallsService } = require('../services/twilioCallSyncService');
 
 async function getCalls(req, res, next) {
   try {
@@ -8,6 +9,7 @@ async function getCalls(req, res, next) {
        FROM calls
        ORDER BY created_at DESC`
     );
+
     res.json(rows);
   } catch (error) {
     next(error);
@@ -35,7 +37,27 @@ async function getCallById(req, res, next) {
   }
 }
 
+async function syncTwilioCalls(req, res, next) {
+  try {
+    const result = await syncTwilioCallsService({
+      pageSize: req.body?.pageSize || req.query?.pageSize || 50,
+      to: req.body?.to || req.query?.to,
+      from: req.body?.from || req.query?.from,
+      status: req.body?.status || req.query?.status,
+      startTimeAfter: req.body?.startTimeAfter || req.query?.startTimeAfter
+    });
+
+    res.json({
+      message: 'Sincronizacion con Twilio completada',
+      ...result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getCalls,
-  getCallById
+  getCallById,
+  syncTwilioCalls
 };
