@@ -26,8 +26,24 @@ export const api = {
   getRoot: () => request('/'),
   getHealth: () => request('/health'),
   getUsers: () => request('/api/users'),
-  createUser: (payload) => request('/api/users', { method: 'POST', body: JSON.stringify(payload) }),
-  rechargeUser: (id, amount) => request(`/api/users/${id}/recharge`, { method: 'PUT', body: JSON.stringify({ amount }) }),
+  createUser: (payload) =>
+    request('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  rechargeUser: (id, amount) =>
+    request(`/api/users/${id}/recharge`, {
+      method: 'PUT',
+      body: JSON.stringify({ amount })
+    }),
   getCalls: () => request('/api/calls'),
+
+  // Nueva función para importar llamadas desde Twilio
+  syncTwilioCalls: (payload = {}) =>
+    request('/api/calls/sync-twilio', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+
   getDecisions: () => request('/api/decisions')
 };
