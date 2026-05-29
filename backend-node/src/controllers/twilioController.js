@@ -15,7 +15,7 @@ function buildAllowTwiml() {
 <Response>
   <Say language="es-MX">Llamada autorizada. Su saldo es suficiente.</Say>
   <Pause length="1"/>
-  <Say language="es-MX">Esta es una demostración del sistema de prepago VoIP basado en Redes Inteligentes.</Say>
+  <Say language="es-MX">Esta es una demostración del sistema de prepago VoIP basado en Redes Inteligentes. ¿Pero sí se entiende Chimal?</Say>
 </Response>`;
 }
 
