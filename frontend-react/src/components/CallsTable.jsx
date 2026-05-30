@@ -1,123 +1,78 @@
 ﻿import React from 'react';
 
-function formatStatus(status) {
-  if (!status) return <span className="badge neutral">-</span>;
-
-  const labels = {
-    completed: 'Sesión establecida',
-    failed: 'Liberación / fallo',
-    busy: 'Destino ocupado',
-    'no-answer': 'Sin respuesta',
-    canceled: 'Cancelada',
-    ringing: 'Timbrando',
-    queued: 'En cola',
-    initiated: 'Iniciada',
-    'in-progress': 'En curso'
-  };
-
-  const variants = {
-    completed: 'success',
-    failed: 'danger',
-    busy: 'warning',
-    'no-answer': 'warning',
-    canceled: 'neutral',
-    ringing: 'info',
-    queued: 'info',
-    initiated: 'info',
-    'in-progress': 'info'
-  };
-
-  return (
-    <span className={`badge ${variants[status] || 'neutral'}`}>
-      {labels[status] || status}
-    </span>
-  );
+function money(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
 }
 
-function formatDirection(direction) {
-  if (!direction) return '-';
+function decisionBadge(decision) {
+  if (decision === 'ALLOW_CALL') {
+    return <span className="badge success">Autorizada</span>;
+  }
 
-  const labels = {
-    inbound: 'Entrante',
-    outbound: 'Saliente'
-  };
+  if (decision === 'REJECT_CALL') {
+    return <span className="badge danger">Rechazada</span>;
+  }
 
-  return labels[direction] || direction;
+  return <span className="badge neutral">Sin decisión</span>;
 }
 
-function formatDecision(decision) {
-  if (!decision) return <span className="badge neutral">-</span>;
-
-  const labels = {
-    ALLOW_CALL: 'Servicio autorizado',
-    REJECT_CALL: 'Servicio denegado'
+function statusBadge(status) {
+  const map = {
+    completed: ['success', 'Completada'],
+    failed: ['danger', 'Fallida'],
+    busy: ['warning', 'Ocupado'],
+    'no-answer': ['warning', 'Sin respuesta'],
+    canceled: ['neutral', 'Cancelada'],
+    ringing: ['info', 'Timbrando'],
+    queued: ['info', 'En cola'],
+    initiated: ['info', 'Iniciada'],
+    'in-progress': ['info', 'En curso']
   };
 
-  const variants = {
-    ALLOW_CALL: 'success',
-    REJECT_CALL: 'danger'
-  };
+  const [type, label] = map[status] || ['neutral', status || '-'];
 
-  return (
-    <span className={`badge ${variants[decision] || 'neutral'}`}>
-      {labels[decision] || decision}
-    </span>
-  );
+  return <span className={`badge ${type}`}>{label}</span>;
 }
 
 export default function CallsTable({ calls }) {
-  const sortedCalls = [...calls].sort(
-    (a, b) => Number(a.id) - Number(b.id)
-  );
+  const sorted = [...calls].sort((a, b) => Number(a.id) - Number(b.id));
 
   return (
-    <div className="table-card">
-      <div className="table-header">
-        <div>
-          <h3>Registro de eventos de señalización</h3>
-          <p>
-            Historial de sesiones y decisiones de control asociadas al flujo de
-            llamadas.
-          </p>
-        </div>
-      </div>
-
-      <table>
+    <div className="table-shell">
+      <table className="smart-table wide-table">
         <thead>
           <tr>
             <th>ID</th>
             <th>Origen</th>
             <th>Destino</th>
-            <th>SID de llamada</th>
-            <th>Estado de señalización</th>
-            <th>Dirección</th>
-            <th>Decisión SCF</th>
-            <th>Motivo técnico</th>
-            <th>Duración</th>
+            <th>Estado</th>
+            <th>Decisión</th>
+            <th>Costo</th>
+            <th>Motivo</th>
             <th>Fecha</th>
           </tr>
         </thead>
 
         <tbody>
-          {sortedCalls.length === 0 ? (
+          {sorted.length === 0 ? (
             <tr>
-              <td colSpan="10">Sin eventos registrados</td>
+              <td colSpan="8" className="empty-cell">
+                No hay llamadas registradas.
+              </td>
             </tr>
           ) : (
-            sortedCalls.map((item) => (
-              <tr key={item.id}>
-                <td>{item.id}</td>
-                <td>{item.from_number}</td>
-                <td>{item.to_number}</td>
-                <td className="sid-cell">{item.twilio_call_sid}</td>
-                <td>{formatStatus(item.call_status)}</td>
-                <td>{formatDirection(item.direction)}</td>
-                <td>{formatDecision(item.decision)}</td>
-                <td className="reason-cell">{item.reason}</td>
-                <td>{Number(item.duration_seconds || 0)} s</td>
-                <td>
-                  {item.created_at
-                    ? new Date(item.created_at).toLocaleString()
+            sorted.map((call) => (
+              <tr key={call.id}>
+                <td className="id-cell">#{call.id}</td>
+                <td className="mono-cell">{call.from_number || '-'}</td>
+                <td className="mono-cell">{call.to_number || '-'}</td>
+                <td>{statusBadge(call.call_status)}</td>
+                <td>{decisionBadge(call.decision)}</td>
+                <td className="money-cell">{money(call.cost)}</td>
+                <td className="reason-cell">{call.reason || '-'}</td>
+                <td className="date-cell">
+                  {call.created_at
+                    ? new Date(call.created_at).toLocaleString()
                     : '-'}
                 </td>
               </tr>

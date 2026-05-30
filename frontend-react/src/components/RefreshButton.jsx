@@ -6,9 +6,9 @@ export default function RefreshButton({
   disabled = false
 }) {
   return (
-    <button className="btn-refresh" onClick={onClick} disabled={disabled}>
-      <span>↻</span>
-      <span>{label}</span>
+    <button className="btn btn-primary" onClick={onClick} disabled={disabled}>
+      <span className={disabled ? '' : 'spin-soft'}>↻</span>
+      {label}
     </button>
   );
 }

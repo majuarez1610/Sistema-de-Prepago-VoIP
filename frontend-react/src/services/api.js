@@ -15,6 +15,7 @@ async function request(path, options = {}) {
   }
 
   const contentType = response.headers.get('content-type') || '';
+
   if (contentType.includes('application/json')) {
     return response.json();
   }
@@ -23,27 +24,31 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  getRoot: () => request('/'),
   getHealth: () => request('/health'),
+
   getUsers: () => request('/api/users'),
+
   createUser: (payload) =>
     request('/api/users', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
+
   rechargeUser: (id, amount) =>
     request(`/api/users/${id}/recharge`, {
       method: 'PUT',
       body: JSON.stringify({ amount })
     }),
+
   getCalls: () => request('/api/calls'),
 
-  // Nueva función para importar llamadas desde Twilio
+  getDecisions: () => request('/api/decisions'),
+
+  getScheduleAnalysis: () => request('/api/calls/schedule-analysis'),
+
   syncTwilioCalls: (payload = {}) =>
     request('/api/calls/sync-twilio', {
       method: 'POST',
       body: JSON.stringify(payload)
-    }),
-
-  getDecisions: () => request('/api/decisions')
+    })
 };

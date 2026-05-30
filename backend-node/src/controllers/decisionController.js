@@ -5,8 +5,9 @@ async function getDecisions(req, res, next) {
     const [rows] = await pool.execute(
       `SELECT id, user_id, phone_number, decision, reason, balance_before, cost, created_at
        FROM decision_logs
-       ORDER BY created_at DESC`
+       ORDER BY id ASC`
     );
+
     res.json(rows);
   } catch (error) {
     next(error);

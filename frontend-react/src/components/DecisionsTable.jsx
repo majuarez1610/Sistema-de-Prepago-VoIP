@@ -4,44 +4,24 @@ function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
 
-function formatDecision(decision) {
-  if (!decision) return <span className="badge neutral">-</span>;
+function decisionBadge(decision) {
+  if (decision === 'ALLOW_CALL') {
+    return <span className="badge success">Autorizada</span>;
+  }
 
-  const labels = {
-    ALLOW_CALL: 'Servicio autorizado',
-    REJECT_CALL: 'Servicio denegado'
-  };
+  if (decision === 'REJECT_CALL') {
+    return <span className="badge danger">Rechazada</span>;
+  }
 
-  const variants = {
-    ALLOW_CALL: 'success',
-    REJECT_CALL: 'danger'
-  };
-
-  return (
-    <span className={`badge ${variants[decision] || 'neutral'}`}>
-      {labels[decision] || decision}
-    </span>
-  );
+  return <span className="badge neutral">Sin decisión</span>;
 }
 
 export default function DecisionsTable({ decisions }) {
-  const sortedDecisions = [...decisions].sort(
-    (a, b) => Number(a.id) - Number(b.id)
-  );
+  const sorted = [...decisions].sort((a, b) => Number(a.id) - Number(b.id));
 
   return (
-    <div className="table-card">
-      <div className="table-header">
-        <div>
-          <h3>Bitácora de decisiones del SCF</h3>
-          <p>
-            Historial de autorizaciones y denegaciones emitidas por la lógica de
-            servicio.
-          </p>
-        </div>
-      </div>
-
-      <table>
+    <div className="table-shell">
+      <table className="smart-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -55,22 +35,24 @@ export default function DecisionsTable({ decisions }) {
         </thead>
 
         <tbody>
-          {sortedDecisions.length === 0 ? (
+          {sorted.length === 0 ? (
             <tr>
-              <td colSpan="7">Sin decisiones registradas</td>
+              <td colSpan="7" className="empty-cell">
+                No hay decisiones registradas.
+              </td>
             </tr>
           ) : (
-            sortedDecisions.map((item) => (
-              <tr key={item.id}>
-                <td>{item.id}</td>
-                <td>{item.phone_number}</td>
-                <td>{formatDecision(item.decision)}</td>
-                <td>{money(item.balance_before)}</td>
-                <td>{money(item.cost)}</td>
-                <td className="reason-cell">{item.reason}</td>
-                <td>
-                  {item.created_at
-                    ? new Date(item.created_at).toLocaleString()
+            sorted.map((decision) => (
+              <tr key={decision.id}>
+                <td className="id-cell">#{decision.id}</td>
+                <td className="mono-cell">{decision.phone_number || '-'}</td>
+                <td>{decisionBadge(decision.decision)}</td>
+                <td className="money-cell">{money(decision.balance_before)}</td>
+                <td className="money-cell">{money(decision.cost)}</td>
+                <td className="reason-cell">{decision.reason || '-'}</td>
+                <td className="date-cell">
+                  {decision.created_at
+                    ? new Date(decision.created_at).toLocaleString()
                     : '-'}
                 </td>
               </tr>

@@ -1,6 +1,10 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import UsersTable from '../components/UsersTable';
 import RefreshButton from '../components/RefreshButton';
+
+function money(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
 
 export default function Users({
   users,
@@ -9,6 +13,10 @@ export default function Users({
   onCreateUser,
   onRechargeUser
 }) {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [message, setMessage] = useState('');
+
   const [form, setForm] = useState({
     name: '',
     phone_number: '',
@@ -18,36 +26,34 @@ export default function Users({
 
   const [recharge, setRecharge] = useState({
     userId: '',
-    amount: '1.00'
+    amount: '5.00'
   });
 
-  const [message, setMessage] = useState('');
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
 
-  const filteredUsers = React.useMemo(() => {
-    const term = search.toLowerCase().trim();
-
-    return users.filter((item) => {
-      const matchesSearch =
+    return users.filter((user) => {
+      const matchSearch =
         !term ||
-        String(item.name || '').toLowerCase().includes(term) ||
-        String(item.phone_number || '').toLowerCase().includes(term) ||
-        String(item.id || '').includes(term);
+        String(user.id || '').includes(term) ||
+        String(user.name || '').toLowerCase().includes(term) ||
+        String(user.phone_number || '').toLowerCase().includes(term);
 
-      const matchesStatus =
-        statusFilter === 'ALL' || item.status === statusFilter;
+      const matchStatus =
+        statusFilter === 'ALL' || user.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      return matchSearch && matchStatus;
     });
   }, [users, search, statusFilter]);
 
-  const activeUsers = users.filter((item) => item.status === 'active').length;
-  const inactiveUsers = users.filter((item) => item.status === 'inactive').length;
+  const activeUsers = users.filter((user) => user.status === 'active').length;
+  const inactiveUsers = users.filter((user) => user.status === 'inactive').length;
+  const totalBalance = users.reduce((acc, user) => acc + Number(user.balance || 0), 0);
 
   const handleCreate = async (event) => {
     event.preventDefault();
-    setMessage('Procesando alta de usuario...');
+    setMessage('Creando usuario...');
+
     try {
       await onCreateUser({
         name: form.name,
@@ -56,13 +62,14 @@ export default function Users({
         status: form.status
       });
 
-      setMessage('Usuario creado correctamente.');
       setForm({
         name: '',
         phone_number: '',
         balance: '10.00',
         status: 'active'
       });
+
+      setMessage('Usuario creado correctamente.');
     } catch (error) {
       setMessage(`Error al crear usuario: ${error.message}`);
     }
@@ -71,60 +78,76 @@ export default function Users({
   const handleRecharge = async (event) => {
     event.preventDefault();
     setMessage('Aplicando recarga...');
+
     try {
       await onRechargeUser(recharge.userId, Number(recharge.amount));
+      setRecharge({ userId: '', amount: '5.00' });
       setMessage('Recarga aplicada correctamente.');
-      setRecharge({ userId: '', amount: '1.00' });
     } catch (error) {
-      setMessage(`Error en recarga: ${error.message}`);
+      setMessage(`Error al recargar: ${error.message}`);
     }
   };
 
   return (
-    <div className="page-stack animate-in">
-      <div className="section-toolbar">
+    <div className="view-stack animate-page">
+      <div className="view-header">
         <div>
-          <h3>Gestión de abonados</h3>
-          <p>Alta, estado, saldo y búsqueda de usuarios provisionados en SDF.</p>
+          <p className="eyebrow">SDF</p>
+          <h2>Gestión de usuarios</h2>
+          <p>Alta de abonados, estado del servicio y recarga manual de saldo.</p>
         </div>
 
         <RefreshButton onClick={onRefresh} disabled={loading} />
       </div>
 
-      <div className="mini-metrics-grid three">
-        <div className="mini-metric-card">
-          <span>Total de usuarios</span>
+      <section className="stats-grid compact">
+        <article className="stat-card">
+          <span>Total</span>
           <strong>{users.length}</strong>
-        </div>
-        <div className="mini-metric-card">
+          <p>Usuarios registrados</p>
+        </article>
+
+        <article className="stat-card">
           <span>Activos</span>
           <strong>{activeUsers}</strong>
-        </div>
-        <div className="mini-metric-card">
+          <p>Servicio habilitado</p>
+        </article>
+
+        <article className="stat-card">
           <span>Inactivos</span>
           <strong>{inactiveUsers}</strong>
-        </div>
-      </div>
+          <p>Servicio bloqueado</p>
+        </article>
 
-      <div className="forms-grid">
-        <form className="form-card" onSubmit={handleCreate}>
-          <h3>Crear usuario</h3>
+        <article className="stat-card">
+          <span>Saldo total</span>
+          <strong>{money(totalBalance)}</strong>
+          <p>Bolsa acumulada</p>
+        </article>
+      </section>
 
-          <label className="field-label">
-            Nombre del abonado
+      <section className="form-grid">
+        <form className="panel-card form-panel" onSubmit={handleCreate}>
+          <div className="panel-title">
+            <h3>Crear abonado</h3>
+            <span>Alta en SDF</span>
+          </div>
+
+          <label>
+            Nombre
             <input
-              placeholder="Ej. Mario López"
               value={form.name}
+              placeholder="Ej. Carlos"
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
           </label>
 
-          <label className="field-label">
-            Número en formato E.164
+          <label>
+            Número E.164
             <input
-              placeholder="+52XXXXXXXXXX"
               value={form.phone_number}
+              placeholder="+52XXXXXXXXXX"
               onChange={(e) =>
                 setForm({ ...form, phone_number: e.target.value })
               }
@@ -132,20 +155,19 @@ export default function Users({
             />
           </label>
 
-          <label className="field-label">
+          <label>
             Saldo inicial
             <input
               type="number"
               step="0.01"
-              placeholder="Saldo inicial"
               value={form.balance}
               onChange={(e) => setForm({ ...form, balance: e.target.value })}
               required
             />
           </label>
 
-          <label className="field-label">
-            Estado del abonado
+          <label>
+            Estado
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
@@ -155,19 +177,22 @@ export default function Users({
             </select>
           </label>
 
-          <button type="submit" className="btn-primary">
+          <button className="btn btn-primary" type="submit">
             Guardar usuario
           </button>
         </form>
 
-        <form className="form-card" onSubmit={handleRecharge}>
-          <h3>Recargar saldo</h3>
+        <form className="panel-card form-panel" onSubmit={handleRecharge}>
+          <div className="panel-title">
+            <h3>Recargar saldo</h3>
+            <span>Recarga manual</span>
+          </div>
 
-          <label className="field-label">
+          <label>
             ID de usuario
             <input
-              placeholder="Ej. 1"
               value={recharge.userId}
+              placeholder="Ej. 1"
               onChange={(e) =>
                 setRecharge({ ...recharge, userId: e.target.value })
               }
@@ -175,12 +200,11 @@ export default function Users({
             />
           </label>
 
-          <label className="field-label">
-            Monto de recarga
+          <label>
+            Monto
             <input
               type="number"
               step="0.01"
-              placeholder="Monto"
               value={recharge.amount}
               onChange={(e) =>
                 setRecharge({ ...recharge, amount: e.target.value })
@@ -189,46 +213,58 @@ export default function Users({
             />
           </label>
 
-          <button type="submit" className="btn-primary">
+          <button className="btn btn-secondary" type="submit">
             Aplicar recarga
           </button>
-        </form>
-      </div>
 
-      <div className="filter-card">
-        <div className="search-box">
-          <span>🔎</span>
-          <input
-            placeholder="Buscar por ID, nombre o número..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="hint-box">
+            También existe recarga simulada por llamada con DTMF.
+          </div>
+        </form>
+      </section>
+
+      {message && <div className="alert-card">{message}</div>}
+
+      <section className="panel-card">
+        <div className="panel-title">
+          <div>
+            <h3>Tabla de usuarios</h3>
+            <p>{filteredUsers.length} de {users.length} usuarios visibles</p>
+          </div>
         </div>
 
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="ALL">Todos los usuarios</option>
-          <option value="active">Activos</option>
-          <option value="inactive">Inactivos</option>
-        </select>
+        <div className="filter-bar">
+          <div className="search-input">
+            <span>🔎</span>
+            <input
+              placeholder="Buscar por ID, nombre o número..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
 
-        <button
-          className="btn-ghost"
-          onClick={() => {
-            setSearch('');
-            setStatusFilter('ALL');
-          }}
-        >
-          Limpiar filtros
-        </button>
-      </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">Todos</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+          </select>
 
-      <div className="result-counter">
-        Mostrando <strong>{filteredUsers.length}</strong> de <strong>{users.length}</strong> usuarios.
-      </div>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              setSearch('');
+              setStatusFilter('ALL');
+            }}
+          >
+            Limpiar
+          </button>
+        </div>
 
-      {message && <p className="message-line">{message}</p>}
-
-      <UsersTable users={filteredUsers} />
+        <UsersTable users={filteredUsers} />
+      </section>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { getTrafficAnalysis } = require('../services/scheduleAnalysisService');
 const { syncTwilioCalls: syncTwilioCallsService } = require('../services/twilioCallSyncService');
 
 async function getCalls(req, res, next) {
@@ -7,7 +8,7 @@ async function getCalls(req, res, next) {
       `SELECT id, user_id, from_number, to_number, twilio_call_sid, account_sid, call_status, direction,
               decision, reason, cost, duration_seconds, created_at
        FROM calls
-       ORDER BY created_at DESC`
+       ORDER BY id ASC`
     );
 
     res.json(rows);
@@ -37,6 +38,15 @@ async function getCallById(req, res, next) {
   }
 }
 
+async function getScheduleAnalysis(req, res, next) {
+  try {
+    const analysis = await getTrafficAnalysis();
+    res.json(analysis);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function syncTwilioCalls(req, res, next) {
   try {
     const result = await syncTwilioCallsService({
@@ -48,7 +58,7 @@ async function syncTwilioCalls(req, res, next) {
     });
 
     res.json({
-      message: 'Sincronizacion con Twilio completada',
+      message: 'Sincronización con Twilio completada',
       ...result
     });
   } catch (error) {
@@ -59,5 +69,6 @@ async function syncTwilioCalls(req, res, next) {
 module.exports = {
   getCalls,
   getCallById,
+  getScheduleAnalysis,
   syncTwilioCalls
 };

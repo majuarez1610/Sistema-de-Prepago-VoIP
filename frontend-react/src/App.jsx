@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api } from './services/api';
+
 import BackendStatus from './components/BackendStatus';
+
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Calls from './pages/Calls';
 import Decisions from './pages/Decisions';
+import Saturation from './pages/Saturation';
 import RealCallGuide from './pages/RealCallGuide';
 
 const VIEWS = {
@@ -12,19 +15,22 @@ const VIEWS = {
   USERS: 'users',
   CALLS: 'calls',
   DECISIONS: 'decisions',
+  SATURATION: 'saturation',
   GUIDE: 'guide'
 };
 
 const NAV_ITEMS = [
   { key: VIEWS.DASHBOARD, label: 'Dashboard', icon: '📊' },
-  { key: VIEWS.USERS, label: 'Usuarios', icon: '👤' },
+  { key: VIEWS.USERS, label: 'Usuarios', icon: '👥' },
   { key: VIEWS.CALLS, label: 'Llamadas', icon: '📞' },
   { key: VIEWS.DECISIONS, label: 'Decisiones', icon: '🧠' },
+  { key: VIEWS.SATURATION, label: 'Saturación', icon: '🔥' },
   { key: VIEWS.GUIDE, label: 'Prueba real', icon: '🛰️' }
 ];
 
 export default function App() {
   const [activeView, setActiveView] = useState(VIEWS.DASHBOARD);
+
   const [health, setHealth] = useState(null);
   const [healthError, setHealthError] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
@@ -32,11 +38,20 @@ export default function App() {
   const [users, setUsers] = useState([]);
   const [calls, setCalls] = useState([]);
   const [decisions, setDecisions] = useState([]);
+  const [scheduleAnalysis, setScheduleAnalysis] = useState(null);
+
   const [loadingData, setLoadingData] = useState(false);
+  const [globalMessage, setGlobalMessage] = useState('');
+
+  const currentView = useMemo(
+    () => NAV_ITEMS.find((item) => item.key === activeView),
+    [activeView]
+  );
 
   const loadHealth = async () => {
     setLoadingHealth(true);
     setHealthError('');
+
     try {
       const data = await api.getHealth();
       setHealth(data);
@@ -49,18 +64,45 @@ export default function App() {
 
   const loadAll = async () => {
     setLoadingData(true);
-    try {
-      const [usersData, callsData, decisionsData] = await Promise.all([
+    setGlobalMessage('');
+
+    const [usersResult, callsResult, decisionsResult, scheduleResult] =
+      await Promise.allSettled([
         api.getUsers(),
         api.getCalls(),
-        api.getDecisions()
+        api.getDecisions(),
+        api.getScheduleAnalysis()
       ]);
-      setUsers(usersData);
-      setCalls(callsData);
-      setDecisions(decisionsData);
-    } finally {
-      setLoadingData(false);
+
+    if (usersResult.status === 'fulfilled') {
+      setUsers(Array.isArray(usersResult.value) ? usersResult.value : []);
+    } else {
+      console.error('[FRONTEND] Error usuarios:', usersResult.reason?.message);
+      setGlobalMessage('No se pudieron cargar usuarios.');
     }
+
+    if (callsResult.status === 'fulfilled') {
+      setCalls(Array.isArray(callsResult.value) ? callsResult.value : []);
+    } else {
+      console.error('[FRONTEND] Error llamadas:', callsResult.reason?.message);
+      setGlobalMessage('No se pudieron cargar llamadas.');
+    }
+
+    if (decisionsResult.status === 'fulfilled') {
+      setDecisions(Array.isArray(decisionsResult.value) ? decisionsResult.value : []);
+    } else {
+      console.error('[FRONTEND] Error decisiones:', decisionsResult.reason?.message);
+      setGlobalMessage('No se pudieron cargar decisiones.');
+    }
+
+    if (scheduleResult.status === 'fulfilled') {
+      setScheduleAnalysis(scheduleResult.value || null);
+    } else {
+      console.error('[FRONTEND] Error saturación:', scheduleResult.reason?.message);
+      setScheduleAnalysis(null);
+    }
+
+    setLoadingData(false);
   };
 
   const createUser = async (payload) => {
@@ -83,97 +125,115 @@ export default function App() {
     loadAll();
   }, []);
 
-  const currentViewLabel =
-    NAV_ITEMS.find((item) => item.key === activeView)?.label || 'Dashboard';
-
   return (
     <div className="app-shell">
-      <div className="layout-shell">
-        <aside className="sidebar">
-          <div className="brand-card">
-            <div className="brand-badge">IN</div>
-            <div>
-              <h1>VoIP Intelligent Network</h1>
-              <p>Sistema de prepago y control inteligente de llamadas</p>
-            </div>
+      <aside className="sidebar glass-card">
+        <div className="brand">
+          <div className="brand-logo">IN</div>
+
+          <div>
+            <h1>VoIP Intelligent Network</h1>
+            <p>Prepago · Twilio · SCF · SDF</p>
           </div>
+        </div>
 
-          <nav className="side-nav">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.key}
-                className={`nav-item ${activeView === item.key ? 'active' : ''}`}
-                onClick={() => setActiveView(item.key)}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
+        <nav className="nav-list">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              className={`nav-button ${activeView === item.key ? 'active' : ''}`}
+              onClick={() => setActiveView(item.key)}
+            >
+              <span>{item.icon}</span>
+              <strong>{item.label}</strong>
+            </button>
+          ))}
+        </nav>
 
-          <div className="side-note">
-            <h3>Resumen del proyecto</h3>
+        <div className="sidebar-card">
+          <span className="sidebar-label">Arquitectura</span>
+          <p>
+            Flujo tipo Red Inteligente: Twilio como SSP, Node.js como webhook,
+            Python como SCF y MySQL como SDF.
+          </p>
+        </div>
+      </aside>
+
+      <section className="main-shell">
+        <header className="topbar glass-card">
+          <div>
+            <p className="eyebrow">Panel de monitoreo</p>
+            <h2>{currentView?.label || 'Dashboard'}</h2>
             <p>
-              Simulación de Red Inteligente con Twilio, Node.js, Python y MySQL
-              para autorización, rechazo y monitoreo de llamadas.
+              Control de abonados, llamadas, decisiones inteligentes, recargas
+              y saturación por horario.
             </p>
           </div>
-        </aside>
 
-        <div className="content-shell">
-          <header className="topbar">
-            <div>
-              <p className="eyebrow">Panel principal</p>
-              <h2>{currentViewLabel}</h2>
-              <p className="topbar-subtitle">
-                Interfaz de monitoreo para eventos de señalización, usuarios y
-                decisiones del SCF.
-              </p>
-            </div>
+          <BackendStatus
+            status={health}
+            loading={loadingHealth}
+            error={healthError}
+            onRefresh={loadHealth}
+          />
+        </header>
 
-            <BackendStatus
-              status={health}
-              loading={loadingHealth}
-              error={healthError}
+        {globalMessage && (
+          <div className="alert-card">
+            <strong>Atención:</strong> {globalMessage}
+          </div>
+        )}
+
+        <main className="content-card">
+          {activeView === VIEWS.DASHBOARD && (
+            <Dashboard
+              users={users}
+              calls={calls}
+              decisions={decisions}
+              analysis={scheduleAnalysis}
+              loading={loadingData}
+              onRefresh={loadAll}
             />
-          </header>
+          )}
 
-          <main className="content-panel">
-            {activeView === VIEWS.DASHBOARD && (
-              <Dashboard users={users} calls={calls} decisions={decisions} />
-            )}
+          {activeView === VIEWS.USERS && (
+            <Users
+              users={users}
+              loading={loadingData}
+              onRefresh={loadAll}
+              onCreateUser={createUser}
+              onRechargeUser={rechargeUser}
+            />
+          )}
 
-            {activeView === VIEWS.USERS && (
-              <Users
-                users={users}
-                loading={loadingData}
-                onRefresh={loadAll}
-                onCreateUser={createUser}
-                onRechargeUser={rechargeUser}
-              />
-            )}
+          {activeView === VIEWS.CALLS && (
+            <Calls
+              calls={calls}
+              loading={loadingData}
+              onRefresh={loadAll}
+              onSyncTwilio={syncTwilioCalls}
+            />
+          )}
 
-            {activeView === VIEWS.CALLS && (
-              <Calls
-                calls={calls}
-                loading={loadingData}
-                onRefresh={loadAll}
-                onSyncTwilio={syncTwilioCalls}
-              />
-            )}
+          {activeView === VIEWS.DECISIONS && (
+            <Decisions
+              decisions={decisions}
+              loading={loadingData}
+              onRefresh={loadAll}
+            />
+          )}
 
-            {activeView === VIEWS.DECISIONS && (
-              <Decisions
-                decisions={decisions}
-                loading={loadingData}
-                onRefresh={loadAll}
-              />
-            )}
+          {activeView === VIEWS.SATURATION && (
+            <Saturation
+              analysis={scheduleAnalysis}
+              loading={loadingData}
+              onRefresh={loadAll}
+            />
+          )}
 
-            {activeView === VIEWS.GUIDE && <RealCallGuide />}
-          </main>
-        </div>
-      </div>
+          {activeView === VIEWS.GUIDE && <RealCallGuide />}
+        </main>
+      </section>
     </div>
   );
 }
